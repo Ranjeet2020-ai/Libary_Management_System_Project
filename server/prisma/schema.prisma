@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  borrows      BorrowRecord[]
+  reservations Reservation[]
+  fines        Fine[]
+}
+
+enum Role {
+  STUDENT
+  LIBRARIAN
+  ADMIN
+}
+
+model Book {
+  id           Int      @id @default(autoincrement())
+  title        String
+  author       String
+  isbn         String   @unique
+  category     String
+  description  String?
+  totalCopies  Int      @default(1)
+  available    Int      @default(1)
+  coverColor   String   @default("#3c2a1e")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  borrows      BorrowRecord[]
+  reservations Reservation[]
+}
+
+model BorrowRecord {
+  id         Int       @id @default(autoincrement())
+  user       User      @relation(fields: [userId], references: [id])
+  userId     Int
+  book       Book      @relation(fields: [bookId], references: [id])
+  bookId     Int
+  borrowedAt DateTime  @default(now())
+  dueDate    DateTime
+  returnedAt DateTime?
+  renewed    Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
+  fine Fine?
+}
+
+model Reservation {
+  id         Int               @id @default(autoincrement())
+  user       User              @relation(fields: [userId], references: [id])
+  userId     Int
+  book       Book              @relation(fields: [bookId], references: [id])
+  bookId     Int
+  reservedAt DateTime          @default(now())
+  status     ReservationStatus @default(PENDING)
+}
+
+enum ReservationStatus {
+  PENDING
+  FULFILLED
+  CANCELLED
+}
+
+model Fine {
+  id             Int          @id @default(autoincrement())
+  user           User         @relation(fields: [userId], references: [id])
+  userId         Int
+  borrowRecord   BorrowRecord @relation(fields: [borrowRecordId], references: [id])
+  borrowRecordId Int          @unique
+  amount         Float
+  paid           Boolean      @default(false)
+  paidAt         DateTime?
+  createdAt      DateTime     @default(now())
+}
