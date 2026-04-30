@@ -59,6 +59,15 @@ export default function BorrowReturn() {
   const now = new Date()
   const sel = { width:'100%', padding:'9px 12px', background:'#0f0e0c', border:'1px solid #2a2520', borderRadius:8, color:'#f0eadc', fontFamily:'DM Sans,sans-serif', fontSize:13, outline:'none', cursor:'pointer' }
 
+  const formatDate = (d) => new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+
+  const StatusBadge = ({ overdue, daysLeft }) => {
+    if (overdue) return <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:600, background:'rgba(220,50,50,0.2)', color:'#ff6b6b', border:'1px solid rgba(220,50,50,0.4)' }}>🔴 {Math.abs(daysLeft)}d overdue</span>
+    if (daysLeft === 0) return <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:600, background:'rgba(255,165,0,0.2)', color:'#ffa500', border:'1px solid rgba(255,165,0,0.4)' }}>⚠️ Due today</span>
+    if (daysLeft <= 3) return <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:600, background:'rgba(255,165,0,0.15)', color:'#ffb347', border:'1px solid rgba(255,165,0,0.3)' }}>⏰ {daysLeft}d left</span>
+    return <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:600, background:'rgba(50,205,50,0.15)', color:'#5aff5a', border:'1px solid rgba(50,205,50,0.3)' }}>✅ {daysLeft}d left</span>
+  }
+
   return (
     <div>
       <div style={{ fontFamily:'Playfair Display,serif', fontSize:26, color:'#f0eadc', marginBottom:4 }}>Issue / Return</div>
@@ -66,19 +75,19 @@ export default function BorrowReturn() {
 
       <div style={{ background:'#161410', border:'1px solid #2a2520', borderRadius:10, padding:'18px 20px', marginBottom:20 }}>
         <div style={{ fontSize:11, color:'#9a7c45', textTransform:'uppercase', letterSpacing:'0.5px', fontWeight:500, marginBottom:14 }}>Issue a book</div>
-        {error && <div style={{ fontSize:12, color:'#e07070', background:'rgba(180,60,60,.1)', padding:'8px 12px', borderRadius:7, marginBottom:12 }}>{error}</div>}
-        {success && <div style={{ fontSize:12, color:'#5a8a5a', background:'rgba(90,138,90,.1)', padding:'8px 12px', borderRadius:7, marginBottom:12 }}>{success}</div>}
+        {error && <div style={{ fontSize:12, color:'#ff6b6b', background:'rgba(220,50,50,.15)', padding:'8px 12px', borderRadius:7, marginBottom:12, border:'1px solid rgba(220,50,50,.3)' }}>{error}</div>}
+        {success && <div style={{ fontSize:12, color:'#5aff5a', background:'rgba(50,205,50,.15)', padding:'8px 12px', borderRadius:7, marginBottom:12, border:'1px solid rgba(50,205,50,.3)' }}>{success}</div>}
         <form onSubmit={issue}>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14 }}>
             <div>
-              <label style={{ display:'block', fontSize:10, color:'#4a4035', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>Member</label>
+              <label style={{ display:'block', fontSize:10, color:'#6a6050', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>Member</label>
               <select style={sel} value={form.userId} onChange={e=>setForm(f=>({...f,userId:e.target.value}))}>
                 <option value="">Select member…</option>
                 {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
               </select>
             </div>
             <div>
-              <label style={{ display:'block', fontSize:10, color:'#4a4035', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>Book (available only)</label>
+              <label style={{ display:'block', fontSize:10, color:'#6a6050', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>Book (available only)</label>
               <select style={sel} value={form.bookId} onChange={e=>setForm(f=>({...f,bookId:e.target.value}))}>
                 <option value="">Select book…</option>
                 {books.map(b => <option key={b.id} value={b.id}>{b.title} ({b.available} left)</option>)}
@@ -91,24 +100,34 @@ export default function BorrowReturn() {
         </form>
       </div>
 
-      <div style={{ fontSize:11, color:'#4a4035', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:12 }}>Currently borrowed ({borrows.length})</div>
+      <div style={{ fontSize:11, color:'#6a6050', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:12 }}>Currently borrowed ({borrows.length})</div>
       {loading ? <div style={{ color:'#3a3530', fontSize:13 }}>Loading…</div> : borrows.map(b => {
         const due = new Date(b.dueDate)
+        const issued = new Date(b.borrowedAt)
         const overdue = due < now
         const daysLeft = Math.ceil((due - now) / 86400000)
         return (
-          <div key={b.id} style={{ background:'#161410', border:'1px solid #2a2520', borderRadius:8, padding:'12px 16px', marginBottom:8, display:'flex', alignItems:'center', gap:12 }}>
-            <div style={{ width:34, height:34, borderRadius:6, background: b.book?.coverColor || '#3c2a1e', flexShrink:0 }}/>
+          <div key={b.id} style={{ background:'#161410', border:'1px solid #2a2520', borderRadius:8, padding:'14px 16px', marginBottom:10, display:'flex', alignItems:'center', gap:12, transition:'border-color .2s' }}
+            onMouseEnter={e=>e.currentTarget.style.borderColor='#9a7c45'} onMouseLeave={e=>e.currentTarget.style.borderColor='#2a2520'}>
+            <div style={{ width:40, height:52, borderRadius:6, background: b.book?.coverColor || '#3c2a1e', flexShrink:0 }}/>
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontSize:13, color:'#c0b090', fontWeight:500 }}>{b.user?.name}</div>
-              <div style={{ fontSize:11, color:'#4a4035' }}>{b.book?.title}</div>
+              <div style={{ fontSize:13, color:'#e0d0b0', fontWeight:600, marginBottom:2 }}>{b.user?.name}</div>
+              <div style={{ fontSize:12, color:'#9a8a6a', marginBottom:6 }}>{b.book?.title}</div>
+              <div style={{ display:'flex', gap:16, flexWrap:'wrap' }}>
+                <div style={{ fontSize:11, color:'#5a5040' }}>
+                  <span style={{ color:'#6a6050' }}>📅 Issued:</span> <span style={{ color:'#b0a080' }}>{formatDate(issued)}</span>
+                </div>
+                <div style={{ fontSize:11, color:'#5a5040' }}>
+                  <span style={{ color:'#6a6050' }}>📆 Due:</span> <span style={{ color: overdue ? '#ff6b6b' : '#b0a080' }}>{formatDate(due)}</span>
+                </div>
+              </div>
             </div>
-            <div style={{ fontSize:11, color: overdue ? '#e07070' : daysLeft <= 2 ? '#b08d50' : '#9a7c45', marginRight:8, flexShrink:0 }}>
-              {overdue ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `${daysLeft}d left`}
-            </div>
-            <div style={{ display:'flex', gap:6, flexShrink:0 }}>
-              {!b.renewed && <button onClick={() => renew(b.id)} style={{ padding:'5px 10px', background:'#1f1c18', border:'1px solid #3a3530', borderRadius:6, color:'#9a7c45', fontSize:11, cursor:'pointer' }}>Renew</button>}
-              <button onClick={() => returnBook(b.id)} style={{ padding:'5px 10px', background:'#1f1c18', border:'1px solid #3a3530', borderRadius:6, color:'#c0b090', fontSize:11, cursor:'pointer' }}>Return</button>
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:8, flexShrink:0 }}>
+              <StatusBadge overdue={overdue} daysLeft={daysLeft} />
+              <div style={{ display:'flex', gap:6 }}>
+                {!b.renewed && <button onClick={() => renew(b.id)} style={{ padding:'5px 12px', background:'rgba(154,124,69,.15)', border:'1px solid rgba(154,124,69,.4)', borderRadius:6, color:'#d4a843', fontSize:11, fontWeight:500, cursor:'pointer' }}>Renew</button>}
+                <button onClick={() => returnBook(b.id)} style={{ padding:'5px 12px', background:'rgba(50,205,50,.1)', border:'1px solid rgba(50,205,50,.3)', borderRadius:6, color:'#5aff5a', fontSize:11, fontWeight:500, cursor:'pointer' }}>Return</button>
+              </div>
             </div>
           </div>
         )
