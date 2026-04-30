@@ -99,3 +99,31 @@ export const getUserBorrows = async (req, res) => {
     res.status(500).json({ message: err.message })
   }
 }
+export const selfBorrow = async (req, res) => {
+  try {
+    const userId = req.user.id
+    const { bookId } = req.body
+    const book = await prisma.book.findUnique({ where: { id: Number(bookId) } })
+    if (!book) return res.status(404).json({ message: 'Book not found' })
+    if (book.available < 1) return res.status(400).json({ message: 'No copies available' })
+
+    const existing = await prisma.borrowRecord.findFirst({
+      where: { userId: Number(userId), bookId: Number(bookId), returnedAt: null }
+    })
+    if (existing) return res.status(400).json({ message: 'You already borrowed this book' })
+
+    const dueDate = new Date()
+    dueDate.setDate(dueDate.getDate() + (Number(process.env.LOAN_DAYS) || 14))
+
+    const [record] = await prisma.$transaction([
+      prisma.borrowRecord.create({
+        data: { userId: Number(userId), bookId: Number(bookId), dueDate },
+        include: { book: true },
+      }),
+      prisma.book.update({ where: { id: Number(bookId) }, data: { available: { decrement: 1 } } }),
+    ])
+    res.status(201).json(record)
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
+}
